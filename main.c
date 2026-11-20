@@ -38,6 +38,7 @@ void cadastrarVeiculo(
 
 void consultarVeiculo(Veiculo veiculos[], int quantidade);
 void listarVeiculos(Veiculo veiculos[], int quantidade);
+void atualizarVeiculo(Veiculo veiculos[], int quantidade);
 
 /* Inicializa o mapa */
 void inicializarMapa(int mapa[FILEIRAS][COLUNAS]) {
@@ -422,6 +423,104 @@ void listarVeiculos(Veiculo veiculos[], int quantidade) {
     printf("\nTotal de veiculos: %d\n", quantidade);
 }
 
+/* Atualiza a descricao ou categoria de um veiculo */
+void atualizarVeiculo(Veiculo veiculos[], int quantidade) {
+    char identificador[100];
+    char novaDescricao[100];
+    int resultado;
+    int indice;
+    int opcao;
+    int novaCategoria;
+
+    if (quantidade == 0) {
+        printf("\nNao existem veiculos cadastrados.\n");
+        return;
+    }
+
+    printf("\nDigite o identificador do veiculo: ");
+
+    resultado = lerTexto(identificador, sizeof(identificador));
+
+    if (resultado != 1) {
+        printf("Atualizacao cancelada.\n");
+        return;
+    }
+
+    if (!validarIdentificador(identificador)) {
+        printf("Identificador invalido! Use exatamente 7 letras ou numeros.\n");
+        return;
+    }
+
+    indice = buscarVeiculo(veiculos, quantidade, identificador);
+
+    if (indice == -1) {
+        printf("\nVeiculo nao encontrado!\n");
+        return;
+    }
+
+    printf("\n===== ATUALIZAR VEICULO =====\n");
+    printf("1 - Alterar descricao\n");
+    printf("2 - Alterar categoria\n");
+
+    if (!lerInteiro("Escolha o que deseja alterar: ", &opcao)) {
+        printf("Atualizacao cancelada.\n");
+        return;
+    }
+
+    switch (opcao) {
+        case 1:
+            printf("Descricao atual: %s\n", veiculos[indice].descricao);
+            printf("Digite a nova descricao: ");
+
+            resultado = lerTexto(novaDescricao, sizeof(novaDescricao));
+
+            if (resultado != 1) {
+                printf("Atualizacao cancelada.\n");
+                return;
+            }
+
+            if (strlen(novaDescricao) == 0) {
+                printf("A descricao nao pode ficar vazia!\n");
+                return;
+            }
+
+            if (strlen(novaDescricao) > 60) {
+                printf("A descricao deve ter no maximo 60 caracteres!\n");
+                return;
+            }
+
+            strcpy(veiculos[indice].descricao, novaDescricao);
+
+            printf("\nDescricao atualizada com sucesso!\n");
+            break;
+
+        case 2:
+            printf("Categoria atual: %s\n",
+                   veiculos[indice].categoria == 1 ? "Carro" : "Moto");
+
+            if (!lerInteiro(
+                "Digite a nova categoria (1 - Carro / 2 - Moto): ",
+                &novaCategoria
+            )) {
+                printf("Atualizacao cancelada.\n");
+                return;
+            }
+
+            if (novaCategoria != 1 && novaCategoria != 2) {
+                printf("Categoria invalida! Digite 1 ou 2.\n");
+                return;
+            }
+
+            veiculos[indice].categoria = novaCategoria;
+
+            printf("\nCategoria atualizada com sucesso!\n");
+            break;
+
+        default:
+            printf("\nOpcao de atualizacao invalida!\n");
+    }
+}
+
 /* Funcao principal */
 int main(void) {
     int mapa[FILEIRAS][COLUNAS];
@@ -461,7 +560,7 @@ int main(void) {
                 break;
 
             case 3:
-                printf("\nFuncao de atualizacao sera implementada.\n");
+                atualizarVeiculo(veiculos, quantidade);
                 break;
 
             case 4:
