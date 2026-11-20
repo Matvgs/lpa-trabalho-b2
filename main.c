@@ -28,12 +28,16 @@ int lerInteiro(const char mensagem[], int *valor);
 int validarIdentificador(char identificador[]);
 int buscarVeiculo(Veiculo veiculos[], int quantidade, const char identificador[]);
 int aumentarCapacidade(Veiculo **veiculos, int *capacidade);
+
 void cadastrarVeiculo(
     Veiculo **veiculos,
     int *quantidade,
     int *capacidade,
     int mapa[FILEIRAS][COLUNAS]
 );
+
+void consultarVeiculo(Veiculo veiculos[], int quantidade);
+void listarVeiculos(Veiculo veiculos[], int quantidade);
 
 /* Inicializa o mapa */
 void inicializarMapa(int mapa[FILEIRAS][COLUNAS]) {
@@ -88,21 +92,13 @@ void exibirMenu(void) {
     printf("0 - Sair\n");
 }
 
-/*
-   Le uma linha caractere por caractere.
-
-   Retorno:
-   1 = leitura realizada
-   0 = fim da entrada
-  -1 = entrada maior que o limite
-*/
+/* Le texto caractere por caractere */
 int lerTexto(char texto[], int tamanho) {
     int caractere;
     int quantidade = 0;
     int entradaLonga = 0;
 
     while ((caractere = getchar()) != '\n' && caractere != EOF) {
-
         if (quantidade < tamanho - 1) {
             texto[quantidade] = (char)caractere;
             quantidade++;
@@ -183,7 +179,7 @@ int validarIdentificador(char identificador[]) {
     return 1;
 }
 
-/* Busca um veiculo */
+/* Busca um veiculo pelo identificador */
 int buscarVeiculo(
     Veiculo veiculos[],
     int quantidade,
@@ -351,6 +347,81 @@ void cadastrarVeiculo(
     printf("\nVeiculo cadastrado com sucesso!\n");
 }
 
+/* Consulta um veiculo pelo identificador */
+void consultarVeiculo(Veiculo veiculos[], int quantidade) {
+    char identificador[100];
+    int resultado;
+    int indice;
+
+    if (quantidade == 0) {
+        printf("\nNao existem veiculos cadastrados.\n");
+        return;
+    }
+
+    printf("\nDigite o identificador do veiculo: ");
+
+    resultado = lerTexto(identificador, sizeof(identificador));
+
+    if (resultado != 1) {
+        printf("Consulta cancelada.\n");
+        return;
+    }
+
+    if (!validarIdentificador(identificador)) {
+        printf("Identificador invalido! Use exatamente 7 letras ou numeros.\n");
+        return;
+    }
+
+    indice = buscarVeiculo(veiculos, quantidade, identificador);
+
+    if (indice == -1) {
+        printf("\nVeiculo nao encontrado!\n");
+        return;
+    }
+
+    printf("\n===== VEICULO ENCONTRADO =====\n");
+    printf("Identificador: %s\n", veiculos[indice].identificador);
+    printf("Descricao: %s\n", veiculos[indice].descricao);
+
+    if (veiculos[indice].categoria == 1) {
+        printf("Categoria: Carro\n");
+    } else {
+        printf("Categoria: Moto\n");
+    }
+
+    printf("Fileira: %d\n", veiculos[indice].fileira);
+    printf("Coluna: %d\n", veiculos[indice].coluna);
+}
+
+/* Lista todos os veiculos */
+void listarVeiculos(Veiculo veiculos[], int quantidade) {
+    int i;
+
+    if (quantidade == 0) {
+        printf("\nNao existem veiculos cadastrados.\n");
+        return;
+    }
+
+    printf("\n===== VEICULOS CADASTRADOS =====\n");
+
+    for (i = 0; i < quantidade; i++) {
+        printf("\nVeiculo %d\n", i + 1);
+        printf("Identificador: %s\n", veiculos[i].identificador);
+        printf("Descricao: %s\n", veiculos[i].descricao);
+
+        if (veiculos[i].categoria == 1) {
+            printf("Categoria: Carro\n");
+        } else {
+            printf("Categoria: Moto\n");
+        }
+
+        printf("Fileira: %d\n", veiculos[i].fileira);
+        printf("Coluna: %d\n", veiculos[i].coluna);
+    }
+
+    printf("\nTotal de veiculos: %d\n", quantidade);
+}
+
 /* Funcao principal */
 int main(void) {
     int mapa[FILEIRAS][COLUNAS];
@@ -386,7 +457,7 @@ int main(void) {
                 break;
 
             case 2:
-                printf("\nFuncao de consulta sera implementada.\n");
+                consultarVeiculo(veiculos, quantidade);
                 break;
 
             case 3:
@@ -402,8 +473,7 @@ int main(void) {
                 break;
 
             case 6:
-                printf("\nVeiculos cadastrados: %d\n", quantidade);
-                printf("Capacidade atual do vetor: %d\n", capacidade);
+                listarVeiculos(veiculos, quantidade);
                 break;
 
             case 7:
