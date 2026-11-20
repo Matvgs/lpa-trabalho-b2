@@ -1,10 +1,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <limits.h>
+#include <errno.h>
 
 #define FILEIRAS 4
 #define COLUNAS 5
 #define CAPACIDADE_INICIAL 2
+#define LIMITE_VEICULOS 20
 
 typedef struct {
     char identificador[8];
@@ -14,100 +19,23 @@ typedef struct {
     int coluna;
 } Veiculo;
 
+/* Prototipos */
 void inicializarMapa(int mapa[FILEIRAS][COLUNAS]);
 void exibirMapa(int mapa[FILEIRAS][COLUNAS]);
 void exibirMenu(void);
+int lerTexto(char texto[], int tamanho);
+int lerInteiro(const char mensagem[], int *valor);
+int validarIdentificador(char identificador[]);
+int buscarVeiculo(Veiculo veiculos[], int quantidade, const char identificador[]);
+int aumentarCapacidade(Veiculo **veiculos, int *capacidade);
+void cadastrarVeiculo(
+    Veiculo **veiculos,
+    int *quantidade,
+    int *capacidade,
+    int mapa[FILEIRAS][COLUNAS]
+);
 
-int main(void) {
-    int mapa[FILEIRAS][COLUNAS];
-    int opcao;
-
-    Veiculo *veiculos;
-    int quantidade = 0;
-    int capacidade = CAPACIDADE_INICIAL;
-
-    /* Alocacao inicial do vetor dinamico */
-    veiculos = malloc(capacidade * sizeof(Veiculo));
-
-    if (veiculos == NULL) {
-        printf("Erro ao alocar memoria!\n");
-        return 1;
-    }
-
-    inicializarMapa(mapa);
-
-    printf("Sistema iniciado com sucesso!\n");
-    printf("Capacidade inicial: %d veiculos.\n", capacidade);
-
-    do {
-        exibirMenu();
-
-        printf("Escolha uma opcao: ");
-
-        if (scanf("%d", &opcao) != 1) {
-            printf("\nEntrada invalida!\n");
-
-            while (getchar() != '\n');
-
-            opcao = -1;
-            continue;
-        }
-
-        switch (opcao) {
-            case 1:
-                printf("\nCadastro ainda nao implementado.\n");
-                break;
-
-            case 2:
-                printf("\nConsulta ainda nao implementada.\n");
-                break;
-
-            case 3:
-                printf("\nAtualizacao ainda nao implementada.\n");
-                break;
-
-            case 4:
-                printf("\nMovimentacao ainda nao implementada.\n");
-                break;
-
-            case 5:
-                printf("\nRemocao ainda nao implementada.\n");
-                break;
-
-            case 6:
-                printf("\n===== CONTROLE DA COLECAO =====\n");
-                printf("Veiculos cadastrados: %d\n", quantidade);
-                printf("Capacidade do vetor: %d\n", capacidade);
-                break;
-
-            case 7:
-                exibirMapa(mapa);
-                break;
-
-            case 8:
-                printf("\nRelatorio ainda nao implementado.\n");
-                break;
-
-            case 0:
-                printf("\nEncerrando o programa...\n");
-                break;
-
-            default:
-                printf("\nOpcao invalida!\n");
-        }
-
-    } while (opcao != 0);
-
-    /* Liberacao da memoria alocada */
-    free(veiculos);
-
-    veiculos = NULL;
-
-    printf("Memoria liberada com sucesso!\n");
-
-    return 0;
-}
-
+/* Inicializa o mapa */
 void inicializarMapa(int mapa[FILEIRAS][COLUNAS]) {
     int i, j;
 
@@ -118,47 +46,386 @@ void inicializarMapa(int mapa[FILEIRAS][COLUNAS]) {
     }
 }
 
+/* Exibe o mapa */
 void exibirMapa(int mapa[FILEIRAS][COLUNAS]) {
     int i, j;
 
-    printf("\n===== MAPA DO ESTACIONAMENTO =====\n\n");
-
-    printf("      ");
+    printf("\n===== MAPA DO ESTACIONAMENTO =====\n");
+    printf("    ");
 
     for (j = 0; j < COLUNAS; j++) {
-        printf("C%d  ", j + 1);
+        printf("C%d ", j + 1);
     }
 
     printf("\n");
 
     for (i = 0; i < FILEIRAS; i++) {
-        printf("F%d    ", i + 1);
+        printf("F%d  ", i + 1);
 
         for (j = 0; j < COLUNAS; j++) {
-            if (mapa[i][j] == 0) {
-                printf(".   ");
+            if (mapa[i][j] == 1) {
+                printf("X  ");
             } else {
-                printf("X   ");
+                printf(".  ");
             }
         }
 
         printf("\n");
     }
-
-    printf("\nLegenda: X = ocupada | . = livre\n");
 }
 
+/* Exibe o menu */
 void exibirMenu(void) {
-    printf("\n");
-    printf("===== SISTEMA DE ESTACIONAMENTO =====\n");
+    printf("\n===== SISTEMA DE ESTACIONAMENTO =====\n");
     printf("1 - Cadastrar veiculo\n");
     printf("2 - Consultar veiculo\n");
     printf("3 - Atualizar veiculo\n");
     printf("4 - Mover veiculo\n");
     printf("5 - Remover veiculo\n");
     printf("6 - Listar veiculos\n");
-    printf("7 - Exibir mapa de vagas\n");
+    printf("7 - Exibir mapa\n");
     printf("8 - Relatorio de ocupacao\n");
-    printf("0 - Encerrar\n");
-    printf("===================================\n");
+    printf("0 - Sair\n");
+}
+
+/*
+   Le uma linha caractere por caractere.
+
+   Retorno:
+   1 = leitura realizada
+   0 = fim da entrada
+  -1 = entrada maior que o limite
+*/
+int lerTexto(char texto[], int tamanho) {
+    int caractere;
+    int quantidade = 0;
+    int entradaLonga = 0;
+
+    while ((caractere = getchar()) != '\n' && caractere != EOF) {
+
+        if (quantidade < tamanho - 1) {
+            texto[quantidade] = (char)caractere;
+            quantidade++;
+        } else {
+            entradaLonga = 1;
+        }
+    }
+
+    texto[quantidade] = '\0';
+
+    if (caractere == EOF && quantidade == 0 && !entradaLonga) {
+        return 0;
+    }
+
+    if (entradaLonga) {
+        printf("Entrada muito longa!\n");
+        return -1;
+    }
+
+    return 1;
+}
+
+/* Le um numero inteiro */
+int lerInteiro(const char mensagem[], int *valor) {
+    char entrada[100];
+    char *fim;
+    long numero;
+    int resultado;
+
+    printf("%s", mensagem);
+
+    resultado = lerTexto(entrada, sizeof(entrada));
+
+    if (resultado != 1) {
+        return 0;
+    }
+
+    errno = 0;
+    numero = strtol(entrada, &fim, 10);
+
+    if (entrada == fim || errno == ERANGE ||
+        numero < INT_MIN || numero > INT_MAX) {
+        printf("Valor invalido!\n");
+        return 0;
+    }
+
+    while (isspace((unsigned char)*fim)) {
+        fim++;
+    }
+
+    if (*fim != '\0') {
+        printf("Digite somente numeros inteiros!\n");
+        return 0;
+    }
+
+    *valor = (int)numero;
+    return 1;
+}
+
+/* Valida o identificador */
+int validarIdentificador(char identificador[]) {
+    int i;
+
+    if (strlen(identificador) != 7) {
+        return 0;
+    }
+
+    for (i = 0; i < 7; i++) {
+        identificador[i] = (char)toupper(
+            (unsigned char)identificador[i]
+        );
+
+        if (!isalnum((unsigned char)identificador[i])) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/* Busca um veiculo */
+int buscarVeiculo(
+    Veiculo veiculos[],
+    int quantidade,
+    const char identificador[]
+) {
+    int i;
+
+    for (i = 0; i < quantidade; i++) {
+        if (strcmp(veiculos[i].identificador, identificador) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+/* Aumenta a capacidade do vetor */
+int aumentarCapacidade(Veiculo **veiculos, int *capacidade) {
+    int novaCapacidade;
+    Veiculo *temporario;
+
+    if (*capacidade >= LIMITE_VEICULOS) {
+        return 0;
+    }
+
+    novaCapacidade = *capacidade * 2;
+
+    if (novaCapacidade > LIMITE_VEICULOS) {
+        novaCapacidade = LIMITE_VEICULOS;
+    }
+
+    temporario = realloc(
+        *veiculos,
+        novaCapacidade * sizeof(Veiculo)
+    );
+
+    if (temporario == NULL) {
+        printf("Erro ao aumentar a memoria!\n");
+        return 0;
+    }
+
+    *veiculos = temporario;
+    *capacidade = novaCapacidade;
+
+    printf("Capacidade do vetor aumentada para %d veiculos.\n",
+           novaCapacidade);
+
+    return 1;
+}
+
+/* Cadastra um veiculo */
+void cadastrarVeiculo(
+    Veiculo **veiculos,
+    int *quantidade,
+    int *capacidade,
+    int mapa[FILEIRAS][COLUNAS]
+) {
+    Veiculo novoVeiculo;
+    char identificadorTemp[100];
+    char descricaoTemp[100];
+    int resultado;
+
+    if (*quantidade >= LIMITE_VEICULOS) {
+        printf("\nEstacionamento sem vagas para novos cadastros!\n");
+        return;
+    }
+
+    printf("\nDigite o identificador (7 caracteres): ");
+
+    resultado = lerTexto(identificadorTemp, sizeof(identificadorTemp));
+
+    if (resultado != 1) {
+        printf("Cadastro cancelado.\n");
+        return;
+    }
+
+    if (!validarIdentificador(identificadorTemp)) {
+        printf("Identificador invalido! Use exatamente 7 letras ou numeros.\n");
+        return;
+    }
+
+    strcpy(novoVeiculo.identificador, identificadorTemp);
+
+    if (buscarVeiculo(
+        *veiculos,
+        *quantidade,
+        novoVeiculo.identificador
+    ) != -1) {
+        printf("Esse identificador ja esta cadastrado!\n");
+        return;
+    }
+
+    printf("Digite a descricao do veiculo: ");
+
+    resultado = lerTexto(descricaoTemp, sizeof(descricaoTemp));
+
+    if (resultado != 1) {
+        printf("Cadastro cancelado.\n");
+        return;
+    }
+
+    if (strlen(descricaoTemp) == 0) {
+        printf("A descricao nao pode ficar vazia!\n");
+        return;
+    }
+
+    if (strlen(descricaoTemp) > 60) {
+        printf("A descricao deve ter no maximo 60 caracteres!\n");
+        return;
+    }
+
+    strcpy(novoVeiculo.descricao, descricaoTemp);
+
+    if (!lerInteiro(
+        "Categoria (1 - Carro / 2 - Moto): ",
+        &novoVeiculo.categoria
+    )) {
+        printf("Cadastro cancelado.\n");
+        return;
+    }
+
+    if (novoVeiculo.categoria != 1 && novoVeiculo.categoria != 2) {
+        printf("Categoria invalida!\n");
+        return;
+    }
+
+    if (!lerInteiro("Fileira (1 a 4): ", &novoVeiculo.fileira)) {
+        printf("Cadastro cancelado.\n");
+        return;
+    }
+
+    if (novoVeiculo.fileira < 1 || novoVeiculo.fileira > FILEIRAS) {
+        printf("Fileira invalida!\n");
+        return;
+    }
+
+    if (!lerInteiro("Coluna (1 a 5): ", &novoVeiculo.coluna)) {
+        printf("Cadastro cancelado.\n");
+        return;
+    }
+
+    if (novoVeiculo.coluna < 1 || novoVeiculo.coluna > COLUNAS) {
+        printf("Coluna invalida!\n");
+        return;
+    }
+
+    if (mapa[novoVeiculo.fileira - 1][novoVeiculo.coluna - 1] == 1) {
+        printf("Essa vaga ja esta ocupada!\n");
+        return;
+    }
+
+    if (*quantidade == *capacidade) {
+        if (!aumentarCapacidade(veiculos, capacidade)) {
+            printf("Nao foi possivel realizar o cadastro.\n");
+            return;
+        }
+    }
+
+    (*veiculos)[*quantidade] = novoVeiculo;
+
+    mapa[novoVeiculo.fileira - 1][novoVeiculo.coluna - 1] = 1;
+
+    (*quantidade)++;
+
+    printf("\nVeiculo cadastrado com sucesso!\n");
+}
+
+/* Funcao principal */
+int main(void) {
+    int mapa[FILEIRAS][COLUNAS];
+    int opcao = -1;
+    int quantidade = 0;
+    int capacidade = CAPACIDADE_INICIAL;
+
+    Veiculo *veiculos = malloc(capacidade * sizeof(Veiculo));
+
+    if (veiculos == NULL) {
+        printf("Erro ao alocar memoria!\n");
+        return 1;
+    }
+
+    inicializarMapa(mapa);
+
+    do {
+        exibirMenu();
+
+        if (!lerInteiro("\nEscolha uma opcao: ", &opcao)) {
+            printf("Opcao invalida!\n");
+            continue;
+        }
+
+        switch (opcao) {
+            case 1:
+                cadastrarVeiculo(
+                    &veiculos,
+                    &quantidade,
+                    &capacidade,
+                    mapa
+                );
+                break;
+
+            case 2:
+                printf("\nFuncao de consulta sera implementada.\n");
+                break;
+
+            case 3:
+                printf("\nFuncao de atualizacao sera implementada.\n");
+                break;
+
+            case 4:
+                printf("\nFuncao de movimentacao sera implementada.\n");
+                break;
+
+            case 5:
+                printf("\nFuncao de remocao sera implementada.\n");
+                break;
+
+            case 6:
+                printf("\nVeiculos cadastrados: %d\n", quantidade);
+                printf("Capacidade atual do vetor: %d\n", capacidade);
+                break;
+
+            case 7:
+                exibirMapa(mapa);
+                break;
+
+            case 8:
+                printf("\nRelatorio sera implementado.\n");
+                break;
+
+            case 0:
+                printf("\nEncerrando o sistema...\n");
+                break;
+
+            default:
+                printf("\nOpcao inexistente!\n");
+        }
+
+    } while (opcao != 0);
+
+    free(veiculos);
+    veiculos = NULL;
+
+    return 0;
 }
