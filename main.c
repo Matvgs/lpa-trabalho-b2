@@ -40,6 +40,12 @@ void consultarVeiculo(Veiculo veiculos[], int quantidade);
 void listarVeiculos(Veiculo veiculos[], int quantidade);
 void atualizarVeiculo(Veiculo veiculos[], int quantidade);
 
+void moverVeiculo(
+    Veiculo veiculos[],
+    int quantidade,
+    int mapa[FILEIRAS][COLUNAS]
+);
+
 /* Inicializa o mapa */
 void inicializarMapa(int mapa[FILEIRAS][COLUNAS]) {
     int i, j;
@@ -521,6 +527,101 @@ void atualizarVeiculo(Veiculo veiculos[], int quantidade) {
     }
 }
 
+/* Move um veiculo para outra vaga */
+void moverVeiculo(
+    Veiculo veiculos[],
+    int quantidade,
+    int mapa[FILEIRAS][COLUNAS]
+) {
+    char identificador[100];
+    int resultado;
+    int indice;
+    int novaFileira;
+    int novaColuna;
+    int fileiraAtual;
+    int colunaAtual;
+
+    if (quantidade == 0) {
+        printf("\nNao existem veiculos cadastrados.\n");
+        return;
+    }
+
+    printf("\nDigite o identificador do veiculo: ");
+
+    resultado = lerTexto(identificador, sizeof(identificador));
+
+    if (resultado != 1) {
+        printf("Movimentacao cancelada.\n");
+        return;
+    }
+
+    if (!validarIdentificador(identificador)) {
+        printf("Identificador invalido! Use exatamente 7 letras ou numeros.\n");
+        return;
+    }
+
+    indice = buscarVeiculo(veiculos, quantidade, identificador);
+
+    if (indice == -1) {
+        printf("\nVeiculo nao encontrado!\n");
+        return;
+    }
+
+    fileiraAtual = veiculos[indice].fileira;
+    colunaAtual = veiculos[indice].coluna;
+
+    printf("\nVeiculo encontrado!\n");
+    printf("Posicao atual: Fileira %d, Coluna %d\n",
+           fileiraAtual, colunaAtual);
+
+    if (!lerInteiro("Nova fileira (1 a 4): ", &novaFileira)) {
+        printf("Movimentacao cancelada.\n");
+        return;
+    }
+
+    if (novaFileira < 1 || novaFileira > FILEIRAS) {
+        printf("Fileira invalida!\n");
+        return;
+    }
+
+    if (!lerInteiro("Nova coluna (1 a 5): ", &novaColuna)) {
+        printf("Movimentacao cancelada.\n");
+        return;
+    }
+
+    if (novaColuna < 1 || novaColuna > COLUNAS) {
+        printf("Coluna invalida!\n");
+        return;
+    }
+
+    /* Verifica se escolheu a mesma vaga */
+    if (novaFileira == fileiraAtual &&
+        novaColuna == colunaAtual) {
+        printf("\nO veiculo ja esta nessa vaga!\n");
+        return;
+    }
+
+    /* Verifica se a nova vaga esta ocupada */
+    if (mapa[novaFileira - 1][novaColuna - 1] == 1) {
+        printf("\nEssa vaga ja esta ocupada!\n");
+        return;
+    }
+
+    /* Libera a vaga antiga */
+    mapa[fileiraAtual - 1][colunaAtual - 1] = 0;
+
+    /* Ocupa a nova vaga */
+    mapa[novaFileira - 1][novaColuna - 1] = 1;
+
+    /* Atualiza a posicao no vetor */
+    veiculos[indice].fileira = novaFileira;
+    veiculos[indice].coluna = novaColuna;
+
+    printf("\nVeiculo movimentado com sucesso!\n");
+    printf("Nova posicao: Fileira %d, Coluna %d\n",
+           novaFileira, novaColuna);
+}
+
 /* Funcao principal */
 int main(void) {
     int mapa[FILEIRAS][COLUNAS];
@@ -564,7 +665,7 @@ int main(void) {
                 break;
 
             case 4:
-                printf("\nFuncao de movimentacao sera implementada.\n");
+                moverVeiculo(veiculos, quantidade, mapa);
                 break;
 
             case 5:
