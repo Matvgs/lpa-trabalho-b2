@@ -1,201 +1,186 @@
-# lpa-trabalho-b2
-
 # Sistema de Gestão de Estacionamento
 
-## 1. Sobre o projeto
+**Disciplina:** Lógica de Programação e Algoritmos
+**Semestre:** 2026/2
+**Trabalho:** Trabalho do 2º Bimestre – Sistema de Gestão de Estacionamento
 
-Este projeto foi desenvolvido para a disciplina de Linguagem de Programação, utilizando a linguagem C.
+## 1. Integrantes
 
-O sistema tem como finalidade realizar o gerenciamento de um estacionamento, permitindo controlar os veículos cadastrados, suas respectivas vagas e a ocupação do espaço.
+| Nome | Perfil GitHub |
+| ---- | ------------- |
+| Matheus Victor Galvão da Silva | [@Matvgs](https://github.com/Matvgs) |
+| `<PREENCHER: nome do(a) colega>` | `<PREENCHER: @perfil-do-github>` |
 
-O estacionamento possui capacidade para até 20 veículos, organizados em uma matriz de 4 fileiras por 5 colunas.
+> Os nomes e perfis devem corresponder à identificação feita na submissão do AVA.
 
-## 2. Objetivo
+## 2. Descrição do cenário e escopo
 
-Desenvolver uma aplicação em linguagem C que permita gerenciar as operações de um estacionamento, aplicando conceitos de programação estruturada, funções, structs, matrizes, vetores dinâmicos e gerenciamento de memória.
+Sistema de terminal, escrito em C, que controla vagas e veículos de um estacionamento fictício com **4 fileiras e 5 colunas (20 vagas)**.
 
-## 3. Funcionalidades
+O programa começa sem veículos cadastrados, recebe operações por um menu e conserva os dados somente enquanto estiver aberto. Não há persistência em arquivos.
 
-O sistema possui as seguintes funcionalidades:
+Os identificadores e as descrições usados nos testes são fictícios.
 
-- Cadastro de veículos.
-- Busca de veículos pelo identificador.
-- Consulta dos dados de veículos cadastrados.
-- Atualização da descrição e categoria.
-- Movimentação de veículos entre vagas.
-- Remoção de veículos cadastrados.
-- Listagem de todos os veículos.
-- Exibição do mapa do estacionamento.
-- Relatório de ocupação.
-- Validação das informações fornecidas pelo usuário.
-- Verificação de consistência entre a matriz e o vetor de veículos.
-- Aumento automático da capacidade do vetor dinâmico.
+## 3. Funcionalidades e menu
 
-## 4. Organização do estacionamento
+| Opção | Funcionalidade |
+| ----- | -------------- |
+| 1 | Cadastrar veículo |
+| 2 | Consultar veículo por identificador |
+| 3 | Atualizar descrição ou categoria |
+| 4 | Mover veículo para outra vaga |
+| 5 | Remover veículo |
+| 6 | Listar veículos cadastrados |
+| 7 | Exibir mapa de vagas |
+| 8 | Exibir relatório da ocupação |
+| 0 | Encerrar (libera a memória dinâmica) |
 
-O estacionamento possui:
+Regras de validação implementadas:
 
-- 4 fileiras.
-- 5 colunas.
-- 20 vagas disponíveis.
+- Identificador com exatamente 7 caracteres alfanuméricos (A–Z e 0–9). Letras minúsculas são convertidas para maiúsculas, portanto `abc1d23` e `ABC1D23` são o mesmo veículo (duplicidade recusada).
+- Descrição não vazia, com até 60 caracteres (não é truncada silenciosamente).
+- Categoria: 1 = carro, 2 = moto.
+- Fileira de 1 a 4 e coluna de 1 a 5, validadas antes de acessar a matriz.
+- Vaga ocupada recusa cadastro e movimentação sem alterar o estado.
+- Identificador inexistente em consulta, atualização, movimentação ou remoção: informa "não localizado" e mantém o estado.
+- Estacionamento lotado (20 vagas): novos cadastros são recusados.
+- Falha em `realloc`: o cadastro é cancelado e a coleção e o mapa continuam íntegros.
+- Opção de menu inexistente: avisa e exibe o menu novamente.
+- Leitura de strings com tamanho limitado (sem `gets`).
 
-O mapa utiliza os seguintes símbolos:
+## 4. Estruturas utilizadas
 
-| Símbolo | Significado |
-|---|---|
-| `.` | Vaga livre |
-| `X` | Vaga ocupada |
+### 4.1 Matriz 4 × 5
 
-## 5. Tecnologias utilizadas
+Matriz de inteiros que representa o mapa de vagas: `0` = livre e `1` = ocupada. Todas as posições começam em `0`. É percorrida com laços aninhados na exibição do mapa e na contagem de ocupação.
 
-- Linguagem C.
-- Padrão C11.
-- Compilador GCC.
-- Git.
-- GitHub.
+No mapa exibido ao usuário, `.` indica vaga livre e `X` indica vaga ocupada. A identificação começa em 1 (F1 a F4 e C1 a C5), e o programa converte para os índices internos 0 a 3 e 0 a 4.
 
-## 6. Estruturas de dados utilizadas
+### 4.2 Struct `Veiculo`
 
-### 6.1 Matriz
+| Campo | Descrição |
+| ----- | --------- |
+| `identificador` | 7 caracteres alfanuméricos, único e não alterável após o cadastro |
+| `descricao` | texto de 1 a 60 caracteres |
+| `categoria` | 1 = carro, 2 = moto |
+| `fileira` | fileira da vaga ocupada |
+| `coluna` | coluna da vaga ocupada |
 
-Foi utilizada uma matriz de inteiros com 4 linhas e 5 colunas para representar as vagas do estacionamento.
+### 4.3 Coleção dinâmica (quantidade e capacidade)
 
-- `0`: vaga livre.
-- `1`: vaga ocupada.
+Vetor de `Veiculo` alocado com `malloc`, com **capacidade inicial de 2 registros**. O programa mantém duas variáveis: a **quantidade** de registros em uso e a **capacidade** total reservada.
 
-### 6.2 Struct
+Quando a coleção está cheia, a capacidade é **duplicada** com `realloc`, usando um ponteiro temporário para não perder a referência original em caso de falha. Na remoção, os registros seguintes são deslocados, sem deixar lacunas. No encerramento, o bloco é liberado com `free`.
 
-Foi criada uma estrutura chamada `Veiculo`, responsável por armazenar as informações de cada veículo:
+A capacidade do vetor não altera o número de vagas físicas, que é sempre 20.
 
-- `identificador`: código de identificação com 7 caracteres alfanuméricos.
-- `descricao`: descrição do veículo, com até 60 caracteres.
-- `categoria`: identifica o tipo de veículo.
-- `fileira`: representa a fileira onde o veículo está estacionado.
-- `coluna`: representa a coluna onde o veículo está estacionado.
+**Consistência:** a qualquer momento, o número de registros ativos é igual ao número de células com valor 1 na matriz e ao número de vagas ocupadas no relatório.
 
-As categorias disponíveis são:
+## 5. Modularização
 
-- `1`: Carro.
-- `2`: Moto.
-
-### 6.3 Vetor dinâmico
-
-O sistema utiliza um vetor dinâmico de estruturas `Veiculo`, iniciado com capacidade para 2 registros.
-
-Quando a capacidade é atingida, o sistema aumenta automaticamente o espaço disponível utilizando `realloc`, respeitando o limite máximo de 20 veículos.
-
-Para o gerenciamento da memória dinâmica, são utilizadas as funções `malloc`, `realloc` e `free`.
-
-## 7. Principais funções do sistema
-
-As funções são responsáveis por organizar as operações do programa e facilitar a manutenção do código.
+O projeto usa um único arquivo-fonte, `main.c`. As responsabilidades são divididas em funções:
 
 | Função | Responsabilidade |
-|---|---|
-| `cadastrarVeiculo()` | Realiza o cadastro de um novo veículo. |
-| `buscarVeiculo()` | Procura um veículo pelo seu identificador e retorna sua posição no vetor. |
-| `consultarVeiculo()` | Consulta e apresenta os dados de um veículo cadastrado. |
-| `atualizarVeiculo()` | Modifica a descrição ou categoria de um veículo. |
-| `moverVeiculo()` | Altera a posição de um veículo no estacionamento. |
-| `removerVeiculo()` | Remove um veículo e libera sua vaga. |
-| `listarVeiculos()` | Exibe todos os veículos cadastrados. |
-| `exibirMapa()` | Apresenta visualmente a situação das vagas. |
-| `relatorioOcupacao()` | Apresenta informações sobre a ocupação do estacionamento. |
-| `verificarConsistencia()` | Verifica se os dados da matriz e do vetor estão sincronizados. |
-| `inicializarMapa()` | Inicializa todas as vagas como livres. |
-| `aumentarCapacidade()` | Aumenta a capacidade do vetor dinâmico quando necessário. |
-| `validarIdentificador()` | Verifica se o identificador possui sete caracteres alfanuméricos e converte as letras para maiúsculas. |
-| `validarDescricao()` | Verifica se a descrição possui entre 1 e 60 caracteres. |
-| `lerTexto()` | Realiza a leitura de textos pelo teclado. |
-| `lerInteiro()` | Lê e valida valores inteiros informados pelo usuário. |
-| `exibirMenu()` | Apresenta as opções disponíveis no sistema. |
+| ------ | ---------------- |
+| `exibirMenu()` | Apresenta as opções do menu |
+| `inicializarMapa()` | Inicializa todas as vagas como livres |
+| `lerTexto()` / `lerInteiro()` | Leitura segura e validação das entradas |
+| `validarIdentificador()` | Valida os 7 caracteres e converte para maiúsculas |
+| `validarDescricao()` | Valida o tamanho da descrição |
+| `buscarVeiculo()` | Procura um veículo pelo identificador e retorna sua posição no vetor |
+| `aumentarCapacidade()` | Duplica a capacidade do vetor com `realloc` verificado |
+| `cadastrarVeiculo()` | Cadastro com todas as validações |
+| `consultarVeiculo()` | Exibe os dados de um veículo |
+| `atualizarVeiculo()` | Altera descrição e/ou categoria |
+| `moverVeiculo()` | Move o veículo e sincroniza matriz e registro |
+| `removerVeiculo()` | Libera a vaga e remove o registro sem lacunas |
+| `listarVeiculos()` | Lista os veículos ativos |
+| `exibirMapa()` | Mostra a matriz com legenda |
+| `relatorioOcupacao()` | Total, ocupadas, livres, percentual, carros e motos |
+| `verificarConsistencia()` | Confere se matriz e vetor estão sincronizados |
 
-## 8. Menu do sistema
+> `<CONFERIR: ajuste esta tabela para refletir exatamente as funções do seu main.c>`
 
-O sistema disponibiliza as seguintes opções:
+## 6. Compilação e execução
 
-1. Cadastrar veículo.
-2. Consultar veículo.
-3. Atualizar veículo.
-4. Movimentar veículo.
-5. Remover veículo.
-6. Listar veículos.
-7. Exibir mapa do estacionamento.
-8. Relatório de ocupação.
-0. Sair.
+Pré-requisitos: GCC (com suporte a C11) e um terminal.
 
-## 9. Como executar
-
-### 9.1 Pré-requisitos
-
-É necessário possuir:
-
-- GCC instalado.
-- Terminal ou prompt de comando.
-- Arquivo `main.c` do projeto.
-
-### 9.2 Compilação
-
-Dentro da pasta do projeto, execute:
-
-```bash
-gcc -std=c11 -Wall -Wextra -pedantic main.c -o estacionamento.exe
-```
-
-### 9.3 Execução no Windows
-
-```bash
-.\estacionamento.exe
-```
-
-### 9.4 Execução no Linux
+Compilação (na pasta do projeto, que contém o `main.c`):
 
 ```bash
 gcc -std=c11 -Wall -Wextra -pedantic main.c -o estacionamento
+```
+
+Execução no Linux ou macOS:
+
+```bash
 ./estacionamento
 ```
 
-## 10. Testes do sistema
+Execução no Windows (PowerShell ou Prompt de Comando):
 
-Os seguintes cenários foram definidos para verificar o funcionamento das funcionalidades do sistema.
+```powershell
+.\estacionamento.exe
+```
 
-| Nº | Cenário | Dados e procedimento | Resultado esperado |
-|---|---|---|---|
-| 1 | Cadastro válido | Informar ID válido, descrição, categoria e vaga livre. | Veículo cadastrado corretamente. |
-| 2 | ID duplicado | Tentar cadastrar outro veículo com um ID já existente. | Cadastro recusado. |
-| 3 | ID inválido | Informar um ID com quantidade ou formato incorreto. | Entrada recusada. |
-| 4 | Descrição inválida | Informar uma descrição vazia ou acima de 60 caracteres. | Entrada recusada. |
-| 5 | Crescimento do vetor | Cadastrar mais de dois veículos. | Capacidade do vetor aumentada automaticamente. |
-| 6 | Busca de veículo | Informar o ID de um veículo cadastrado. | Dados do veículo apresentados. |
-| 7 | Busca inexistente | Informar um ID que não está cadastrado. | Mensagem informando que o veículo não foi encontrado. |
-| 8 | Atualização | Alterar a descrição ou categoria de um veículo. | Informações atualizadas corretamente. |
-| 9 | Movimentação | Transferir um veículo para uma vaga livre. | Nova posição registrada corretamente. |
-| 10 | Vaga ocupada | Tentar movimentar um veículo para uma vaga já ocupada. | Operação recusada. |
-| 11 | Remoção | Remover um veículo pelo ID. | Veículo excluído e vaga liberada. |
-| 12 | Estacionamento cheio | Tentar cadastrar um veículo com as 20 vagas ocupadas. | Cadastro recusado. |
-| 13 | Relatório | Consultar o relatório com veículos cadastrados. | Quantidades e percentual de ocupação apresentados corretamente. |
-| 14 | Consistência | Realizar operações de cadastro, movimentação e remoção. | Matriz e vetor permanecem sincronizados. |
+No Windows o GCC gera `estacionamento.exe`. Os executáveis não fazem parte do repositório e são ignorados pelo `.gitignore`.
 
-## 11. Integrante
+## 7. Casos de teste
 
-- **Nome:** Matheus Victor Galvão da Silva
+> Preencha as colunas **Resultado observado** e **Situação** depois de executar cada teste no programa.
 
-## 12. Desenvolvimento
+| Nº | Teste | Entrada / operação | Resultado esperado | Resultado observado | Situação |
+| -- | ----- | ------------------ | ------------------ | ------------------- | -------- |
+| 1 | T01 – Estacionamento vazio | Iniciar o programa e usar as opções 6, 7 e 8 | Listagem vazia, mapa todo livre e ocupação de 0,00% | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 2 | T02 – Cadastro válido | Cadastrar `ABC1D23`, "Carro azul", categoria 1, F1/C1 | Registro aparece na consulta e na listagem; F1/C1 ocupada | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 3 | T03 – Duplicidade sem distinção de caixa | Com `ABC1D23` cadastrado, tentar cadastrar `abc1d23` | Cadastro recusado por duplicidade; contagem e mapa inalterados | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 4 | T04 – Vaga ocupada / índice inválido | Cadastrar em vaga já ocupada; informar fileira 5 ou coluna 0 | Recusa sem alteração do estado | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 5 | T05 – Crescimento dinâmico | Cadastrar 3 veículos seguidos | Capacidade passa de 2 para 4 e os registros anteriores são preservados | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 6 | T06 – Atualização | Alterar descrição e/ou categoria de `ABC1D23` | Dados alterados, sem criar um segundo registro | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 7 | T07 – Movimentação | Mover `ABC1D23` de F1/C1 para F2/C3 (livre) | F1/C1 fica livre e F2/C3 ocupada; registro atualizado | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 8 | T07b – Movimentação para vaga ocupada | Mover `ABC1D23` para uma vaga ocupada | Operação recusada; veículo e mapa inalterados | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 9 | T08 – Remoção | Remover `XYZ9K87` | Registro some da listagem e a vaga é liberada | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 10 | T09 – Lotação | Ocupar as 20 vagas e tentar a 21ª inclusão | 21º cadastro recusado por lotação | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 11 | T10 – Encerramento | Escolher a opção 0 | Memória da coleção liberada e programa encerrado normalmente | `<PREENCHER>` | `<Aprovado/Falhou>` |
+| 12 | Relatório | Cenário do roteiro: 2 carros e 0 motos após as operações | 20 vagas; 2 ocupadas; 18 livres; 10,00%; 2 carros; 0 motos | `<PREENCHER>` | `<Aprovado/Falhou>` |
 
-O projeto foi desenvolvido individualmente, abrangendo as etapas de planejamento, implementação, organização das estruturas de dados, criação das funcionalidades, validação das entradas, gerenciamento de memória dinâmica, testes e documentação.
+## 8. Distribuição de responsabilidades e integração
 
-## 13. Fontes e ferramentas de apoio
+| Integrante | Responsabilidades |
+| ---------- | ----------------- |
+| Matheus Victor Galvão da Silva | `<PREENCHER: funcionalidades, ex.: matriz, menu, cadastro...>` |
+| `<PREENCHER: colega>` | `<PREENCHER: funcionalidades, ex.: realloc, movimentação, relatório...>` |
 
-Durante o desenvolvimento, foram utilizados materiais didáticos disponibilizados na disciplina, pesquisas e ferramentas de apoio para consulta e esclarecimento de dúvidas.
+**Relato da integração das branches:**
+`<PREENCHER: quais branches cada um criou, o que foi desenvolvido em cada uma, em que ordem foram integradas à main e se houve conflitos de merge e como foram resolvidos>`
 
-Também foi utilizada inteligência artificial generativa como ferramenta de apoio para compreender conceitos de programação, auxiliar na implementação de funcionalidades, revisar trechos de código e identificar possíveis erros.
+## 9. Limitações conhecidas
 
-A implementação, os testes e as decisões finais do projeto devem ser conferidos pelo responsável antes da entrega.
+`<PREENCHER: liste limitações reais que você conhece ou escreva "Nenhuma limitação conhecida até o momento da entrega.">`
 
-## 14. Informações acadêmicas
+## 10. Declaração individual de autoria e uso de IA
 
-**Disciplina:** Lógica de Programação
+### Matheus Victor Galvão da Silva
 
-**Trabalho:** Sistema de Gestão de Estacionamento
+- **(a) Funcionalidades em que atuei:** `<PREENCHER>`
+- **(b) Usei IA generativa?** `<Sim / Não>`
+- **(c) Ferramentas, finalidade e sugestões incorporadas:**
+  - Ferramenta: `<PREENCHER, ex.: Claude>`
+  - Para quê: `<PREENCHER, ex.: esclarecer dúvidas sobre realloc, revisar o código, apontar possíveis erros>`
+  - Exemplos de solicitações: `<PREENCHER com pedidos reais que você fez>`
+  - Sugestões incorporadas: `<PREENCHER: o que você aproveitou e como adaptou>`
+- **(d) Código externo adaptado:** `<Não houve / indicar a fonte>`
 
-**Semestre:** 2026/2
+### `<PREENCHER: nome do(a) colega>`
+
+- **(a) Funcionalidades em que atuou:** `<PREENCHER>`
+- **(b) Usou IA generativa?** `<PREENCHER>`
+- **(c) Ferramentas, finalidade e sugestões incorporadas:** `<PREENCHER>`
+- **(d) Código externo adaptado:** `<PREENCHER>`
+
+> Cada integrante deve preencher a própria declaração com informações verdadeiras. Se não usou IA, deve declarar isso expressamente.
+
+## 11. Referências
+
+- Materiais didáticos da disciplina.
+- `<PREENCHER: outras fontes, se houver, ou remover esta linha>`
