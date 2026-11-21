@@ -19,7 +19,7 @@ typedef struct {
     int coluna;
 } Veiculo;
 
-/* ================= ENTRADA ================= */
+/* ================= ENTRADA DE DADOS ================= */
 
 int lerTexto(char texto[], int tamanho) {
     if (fgets(texto, tamanho, stdin) == NULL) {
@@ -37,7 +37,7 @@ int lerTexto(char texto[], int tamanho) {
 
     while ((caractere = getchar()) != '\n' &&
            caractere != EOF) {
-        /* Descarta caracteres excedentes */
+        /* Descarta o restante da entrada */
     }
 
     if (comprimento == (size_t)tamanho - 1) {
@@ -59,7 +59,7 @@ int lerInteiro(const char mensagem[], int minimo, int maximo) {
         int resultado = lerTexto(entrada, sizeof(entrada));
 
         if (resultado == 0) {
-            printf("Entrada encerrada.\n");
+            printf("\nEntrada encerrada.\n");
             exit(0);
         }
 
@@ -69,6 +69,10 @@ int lerInteiro(const char mensagem[], int minimo, int maximo) {
 
         errno = 0;
         valor = strtol(entrada, &fim, 10);
+
+        while (isspace((unsigned char)*fim)) {
+            fim++;
+        }
 
         if (entrada[0] == '\0' ||
             errno == ERANGE ||
@@ -186,7 +190,8 @@ int validarIdentificador(char identificador[]) {
 }
 
 int validarDescricao(const char descricao[]) {
-    return strlen(descricao) > 0;
+    return strlen(descricao) > 0 &&
+           strlen(descricao) <= 60;
 }
 
 /* ================= CADASTRO ================= */
@@ -201,7 +206,6 @@ void cadastrarVeiculo(Veiculo **veiculos, int *quantidade,
     }
 
     Veiculo novo;
-
     char identificadorTemp[100];
     char descricaoTemp[100];
 
@@ -256,9 +260,8 @@ void cadastrarVeiculo(Veiculo **veiculos, int *quantidade,
         }
 
         if (!validarDescricao(descricaoTemp)) {
-            printf("Descricao nao pode ser vazia!\n");
-        } else if (strlen(descricaoTemp) > 60) {
-            printf("Descricao deve ter no maximo 60 caracteres!\n");
+            printf("Descricao invalida! "
+                   "Digite de 1 a 60 caracteres.\n");
         } else {
             break;
         }
@@ -408,8 +411,7 @@ void atualizarVeiculo(Veiculo veiculos[], int quantidade) {
         return;
     }
 
-    if (!validarDescricao(novaDescricao) ||
-        strlen(novaDescricao) > 60) {
+    if (!validarDescricao(novaDescricao)) {
         printf("Descricao invalida!\n");
         return;
     }
@@ -489,7 +491,7 @@ void moverVeiculo(Veiculo veiculos[], int quantidade,
 /* ================= REMOCAO ================= */
 
 void removerVeiculo(Veiculo veiculos[], int *quantidade,
-                   int mapa[FILEIRAS][COLUNAS]) {
+                    int mapa[FILEIRAS][COLUNAS]) {
 
     char identificador[100];
 
@@ -525,10 +527,8 @@ void removerVeiculo(Veiculo veiculos[], int *quantidade,
     int linha = veiculos[indice].fileira - 1;
     int coluna = veiculos[indice].coluna - 1;
 
-    /* Libera a vaga na matriz */
     mapa[linha][coluna] = 0;
 
-    /* Desloca os registros posteriores */
     for (int i = indice; i < *quantidade - 1; i++) {
         veiculos[i] = veiculos[i + 1];
     }
@@ -547,7 +547,6 @@ void relatorioOcupacao(Veiculo veiculos[], int quantidade,
     int carros = 0;
     int motos = 0;
 
-    /* Conta vagas ocupadas na matriz */
     for (int i = 0; i < FILEIRAS; i++) {
         for (int j = 0; j < COLUNAS; j++) {
             if (mapa[i][j] == 1) {
@@ -556,7 +555,6 @@ void relatorioOcupacao(Veiculo veiculos[], int quantidade,
         }
     }
 
-    /* Conta categorias no vetor */
     for (int i = 0; i < quantidade; i++) {
         if (veiculos[i].categoria == 1) {
             carros++;
@@ -583,6 +581,56 @@ void relatorioOcupacao(Veiculo veiculos[], int quantidade,
         printf("ATENCAO: matriz e vetor possuem "
                "quantidades diferentes!\n");
     }
+}
+
+/* ================= VERIFICACAO DE CONSISTENCIA ================= */
+
+int verificarConsistencia(Veiculo veiculos[], int quantidade,
+                          int mapa[FILEIRAS][COLUNAS]) {
+
+    int ocupadas = 0;
+
+    for (int i = 0; i < FILEIRAS; i++) {
+        for (int j = 0; j < COLUNAS; j++) {
+            if (mapa[i][j] == 1) {
+                ocupadas++;
+            } else if (mapa[i][j] != 0) {
+                return 0;
+            }
+        }
+    }
+
+    if (ocupadas != quantidade) {
+        return 0;
+    }
+
+    for (int i = 0; i < quantidade; i++) {
+        int linha = veiculos[i].fileira - 1;
+        int coluna = veiculos[i].coluna - 1;
+
+        if (linha < 0 || linha >= FILEIRAS ||
+            coluna < 0 || coluna >= COLUNAS) {
+            return 0;
+        }
+
+        if (mapa[linha][coluna] != 1) {
+            return 0;
+        }
+
+        for (int j = i + 1; j < quantidade; j++) {
+            if (strcmp(veiculos[i].identificador,
+                       veiculos[j].identificador) == 0) {
+                return 0;
+            }
+
+            if (veiculos[i].fileira == veiculos[j].fileira &&
+                veiculos[i].coluna == veiculos[j].coluna) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
 }
 
 /* ================= MENU ================= */
@@ -667,6 +715,14 @@ int main(void) {
             case 0:
                 printf("\nEncerrando o sistema...\n");
                 break;
+        }
+
+        if (opcao != 0) {
+            if (!verificarConsistencia(veiculos,
+                                       quantidade, mapa)) {
+                printf("\nERRO: inconsistencias detectadas "
+                       "no estacionamento!\n");
+            }
         }
 
     } while (opcao != 0);
