@@ -1,0 +1,20 @@
+# Executáveis compilados
+*.exe
+*.out
+estacionamento
+main
+
+# Arquivos de compilação
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dSYM/
+
+# Arquivos de IDE e sistema
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
